@@ -1,0 +1,14 @@
+CREATE TABLE IF NOT EXISTS raw_dreams (
+    id SERIAL PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    raw_text TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'queued',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS fabrics (
+    id SERIAL PRIMARY KEY,
+    dream_id INTEGER REFERENCES raw_dreams(id),
+    xml_content TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
