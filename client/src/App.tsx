@@ -7,6 +7,10 @@ const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
 
 const client = hcWithType(SERVER_URL);
 
+/**
+ * Main application component for the Dream Weaver.
+ * Handles dream submission and polling for the woven fabric results.
+ */
 function App() {
 	const [dreamText, setDreamText] = useState("");
 	const [status, setStatus] = useState<string | null>(null);
@@ -14,6 +18,11 @@ function App() {
 	const [xmlFabric, setXmlFabric] = useState<string | null>(null);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
+	/**
+	 * Handles the submission of a new dream.
+	 *
+	 * @param e - Form event
+	 */
 	async function handleSubmitDream(e: React.FormEvent) {
 		e.preventDefault();
 		if (!dreamText.trim()) return;
@@ -23,7 +32,7 @@ function App() {
 		setXmlFabric(null);
 
 		try {
-			// @ts-ignore - Hono client types might need regeneration but we know the path
+			// @ts-expect-error - Hono client types might need regeneration but we know the path
 			const res = await client.api.dreams.$post({
 				json: {
 					userId: "user-1",
@@ -52,7 +61,7 @@ function App() {
 		if (dreamId && !xmlFabric) {
 			interval = setInterval(async () => {
 				try {
-					// @ts-ignore
+					// @ts-expect-error - RPC client param types might not be fully inferred
 					const res = await client.api.dreams[":id"].$get({
 						param: { id: dreamId.toString() },
 					});
@@ -60,7 +69,7 @@ function App() {
 					if (res.ok) {
 						const data = await res.json();
 						if (data.status === "completed") {
-							// @ts-ignore
+							// @ts-expect-error - RPC client param types might not be fully inferred
 							const fabricRes = await client.api.fabric[":id"].$get({
 								param: { id: dreamId.toString() },
 							});
