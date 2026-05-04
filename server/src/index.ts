@@ -7,17 +7,28 @@ import { Queue } from "bullmq";
 import Redis from "ioredis";
 import type { ApiResponse } from "shared";
 
-// DB Setup
+/**
+ * PostgreSQL connection pool instance.
+ */
 const db = new Pool({
 	connectionString: process.env.DATABASE_URL || "postgres://user:password@localhost:5432/dream_fabric",
 });
 
-// Redis Setup
+/**
+ * Redis connection instance for BullMQ.
+ */
 const redisConnection = new Redis(process.env.REDIS_URL || "redis://localhost:6379", {
 	maxRetriesPerRequest: null,
 });
+
+/**
+ * BullMQ queue for processing dreams asynchronously.
+ */
 const dreamQueue = new Queue("dream-processing", { connection: redisConnection });
 
+/**
+ * Main Hono application instance defining the API routes.
+ */
 export const app = new Hono()
 
 .use(cors())
