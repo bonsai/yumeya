@@ -15,7 +15,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "dev": "bun --watch run src/index.ts & tsc --watch",
+    "dev": "bun --watch run src/index.ts",
     "worker": "bun --watch run src/worker.ts"
   },
   "dependencies": {
