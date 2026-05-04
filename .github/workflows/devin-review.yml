@@ -9,12 +9,6 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
   push:
-    branches:
-      - main
-      - 'feature/**'
-      - 'fix/**'
-      - 'docs/**'
-      - 'ci/**'
 
 permissions:
   contents: read
