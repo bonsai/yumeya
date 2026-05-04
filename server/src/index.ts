@@ -95,7 +95,7 @@ class TaskStore {
         const items = data.items || [];
         return items.slice(0, 9).map((item: any, index: number) => ({
           id: index + 1,
-          content: typeof item === 'string' ? item : item.content,
+          content: typeof item === 'string' ? item : (item.content || ''),
           status: 'pending' as const,
         }));
       }
