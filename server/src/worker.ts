@@ -2,14 +2,24 @@ import { Worker } from "bullmq";
 import { Pool } from "pg";
 import Redis from "ioredis";
 
+/**
+ * PostgreSQL connection pool for the worker.
+ */
 const db = new Pool({
 	connectionString: process.env.DATABASE_URL || "postgres://user:password@localhost:5432/dream_fabric",
 });
 
+/**
+ * Redis connection for the BullMQ worker.
+ */
 const redisConnection = new Redis(process.env.REDIS_URL || "redis://localhost:6379", {
 	maxRetriesPerRequest: null,
 });
 
+/**
+ * BullMQ worker instance that processes dream interpretation tasks.
+ * It simulates an LLM transformation to XML and saves the result to the database.
+ */
 const worker = new Worker(
 	"dream-processing",
 	async (job) => {
@@ -52,6 +62,9 @@ const worker = new Worker(
 
 console.log("Worker started...");
 
+/**
+ * Event listener for failed BullMQ jobs.
+ */
 worker.on("failed", (job, err) => {
 	console.error(`${job?.id} has failed with ${err.message}`);
 });
