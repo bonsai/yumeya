@@ -1,83 +1,249 @@
-# アーキテクチャ検討：Vite + Firebase 構成
+# Architecture Decision Records (ADR)
 
-## 概要
+## ADR 001: Frontend Stack - Vite + React + TypeScript
 
-「Vite + Firebaseだけ」構成は、多くのプロジェクトで採用されている確立されたスタックです。この構成で実現できる機能と、将来の拡張性についてまとめます。
+### Status
+Accepted
 
-## 🚀 「Vite + Firebase」だけで実現できること
+### Context
+夢データの記録・目標管理を行うSPAが必要。開発速度と型安全性を重視。
 
-驚くほど多くの機能が、これだけのスタックで実現可能です。
+### Decision
+- **Vite**: 高速な開発サーバーとビルド
+- **React 19**: UIライブラリ
+- **TypeScript**: 型安全性の確保
+- **Tailwind CSS 4**: ユーティリティファーストCSS
+- **Radix UI**: アクセシブルなコンポーネント
 
-- **認証 (Authentication)**：メール/パスワードはもちろん、GoogleやX (Twitter) などのソーシャルログインも簡単に実装できます。
-- **データベース (Firestore)**：リアルタイムなデータ同期が可能なNoSQLデータベースです。
-- **サーバーレス関数 (Cloud Functions)**：バックグラウンドでの非同期処理や、安全な決済処理（Stripe連携など）の実装に最適です。
-- **画像ファイルの管理 (Cloud Storage)**：Firestoreに保存するには適さない大きな画像や動画などを管理できます。
-- **静的ホスティング (Firebase Hosting)**：ビルドしたReactアプリをワンコマンドでデプロイ可能です。
+### Consequences
+- ✅ 高速な開発体験
+- ✅ 豊富なエコシステム
+- ✅ Bun でのパッケージ管理が可能
+- ⚠️ バンドルサイズの最適化が必要
 
-## 💡 バックエンドフレームワーク (Hono) は必要か？
+---
 
-結論から言うと、**ほとんどの場合、React/Vite/Firebase だけの構成で事足ります**。
+## ADR 002: Backend Stack - Hono + Bun
 
-`import { getAuth, signInWithPopup, GoogleAuthProvider } from "firebase/auth";` といった風に、クライアントサイド（ブラウザ）から直接Firebase SDKを呼び出すこの構成は「クライアント直結」構成と呼ばれ、「インターネット上のデータベースに直接つなぐ」という抵抗感はあるかもしれませんが、**適切なセキュリティルール**を設定すれば、堅牢なアプリケーションを構築することが可能です。
+### Status
+Accepted
 
-## 🔒 顧客データを守る重要な鍵：セキュリティルール
+### Context
+軽量で高速なAPIサーバーが必要。TypeScriptで統一し、エッジランタイムも視野に入れる。
 
-「クライアント直結」で絶対に欠かせないのが、Firestoreのセキュリティルールの設定です。これは誰にどのデータの読み書きを許可するかを設定するものです。
+### Decision
+- **Hono**: 軽量Webフレームワーク（150行程度でAPI構築可能）
+- **Bun**: JavaScriptランタイム（Node.js互換、高速）
+- **Zod**: リクエストバリデーション（#5）
+- **Stripe SDK**: 決済処理（#4）
 
-例えば、ユーザー自身のドキュメントにのみアクセスを許可するルールは以下のようになります。
+### Consequences
+- ✅ シンプルで学習コストが低い
+- ✅ Bunの高速性を活かせる
+- ✅ Cloudflare Workers等への移行が容易
+- ⚠️ 大規模なバックエンドロジックには不向き
 
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    // ユーザー自身のプロフィールにのみアクセスを許可
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-  }
-}
+---
+
+## ADR 003: Database - Firebase Firestore
+
+### Status
+Accepted
+
+### Context
+リアルタイム同期が可能なNoSQLデータベースが必要。認証・セキュリティルールとの統合が重要。
+
+### Decision
+- **Firebase Firestore**: メインデータベース
+- **Firebase Authentication**: 認証基盤
+- **セキュリティルール**: データアクセス制御
+- **Firestore エミュレータ**: 結合テスト用（#6）
+
+### Data Models
+```
+users/{userId}
+  - email, displayName, subscription_status
+  - goals/{goalId}
+    - title, description, progress
+    - objectives/{objectiveId}
+      - title, keyResults[{id, title, progress}]
+  - dreams/{dreamId}
+    - content, emotions[], tags[], analyzedAt
 ```
 
-この設定により、認証済みのユーザーは、自分のユーザーID (`userId`) に一致するドキュメントのみを操作できるようになります。
+### Consequences
+- ✅ リアルタイム同期が容易
+- ✅ スケーラブル
+- ✅ Firebase エコシステムとの親和性
+- ⚠️ リレーショナルなクエリが苦手
+- ⚠️ セキュリティルールの設計が重要
 
-これはあくまで一例であり、サービスの要件に合わせてロジックを組む必要があります。ここがFirebase利用における**もっとも重要なポイント**であり、また**難易度の高いポイント**でもあります。このルールを適切に設定することを通じて、「Vite + Firebaseだけ」というシンプルなアーキテクチャの中でも、十分な堅牢性を確保することができます。
+---
 
-## 📉 シンプル構成で見えてくる将来性の見極め
+## ADR 004: Monorepo Structure - Bun Workspaces + Turbo
 
-「ユーザー10人、たまにしか使わない非同期処理」というスコープであれば、このシンプルな構成は長期運用の観点からも強力です。特に初期設定のしやすさと一貫したエコシステムは大きなメリットです。一方で、ビジネスが拡大し、以下のような複雑な要件が出てきた場合には、別の選択肢も見えてきます。
+### Status
+Accepted
 
-- **大規模で複雑なバックエンドロジック**：複数のAPIを組み合わせた複雑な処理や、多様なサービスとの連携が必要になった場合。
-- **Firebaseの料金プランを超えた拡張性**：非常に大規模なトラフィックが見込まれる場合。ただし、これはかなり先の話である可能性が高いです。
-- **Firebase以外のデータベース（RDBなど）**：リレーショナルデータベースが絶対に必要なケース。ただし、今回のユースケースでそれが発生する可能性は低いです。
+### Context
+フロントエンド・バックエンド・共有型定義を一元管理したい。
 
-これらの状況は想定する範囲では起こりにくいと予測されるため、少なくともプロジェクトの初期〜中期フェーズにおいては「Vite + Firebase」で問題なく進められると言えます。
+### Decision
+- **Bun Workspaces**: パッケージ管理
+- **Turbo**: タスク実行の最適化
+- **共有パッケージ**: `shared/` に型定義を集約
 
-## 🚀 今後の実装ロードマップ（イシュー駆動）
+### Structure
+```
+yumeya/
+  ├── client/     # Vite + React
+  ├── server/     # Hono + Bun
+  ├── shared/     # TypeScript型定義
+  └── docs/       # ドキュメント
+```
 
-作成済みのイシューに基づき、以下の機能を順次実装していきます。
+### Consequences
+- ✅ コード共有が容易
+- ✅ 一元的な依存関係管理
+- ✅ CI/CDの効率化
+- ⚠️ モノレポ運用の学習コスト
 
-### 1. Stripe 決済システムの統合 (#4)
-- Stripe Checkout を使用したサブスクリプション・従量課金フロー
-- Webhook (`payment_intent.succeeded`) ハンドリング
-- Hono (Bun) での Webhook エンドポイント実装
-- ユーザーの `subscription_status` 管理
+---
 
-### 2. API バリデーションとテストコードの拡充 (#5)
-- Zod を使用したリクエストスキーマのバリデーション
-- Hono の API エンドポイントに対するユニットテスト
-- 目標階層（Goal > Objective > Key Result）の整合性チェック
-- バックエンド側のテスト環境整備（Jest Tests workflow）
+## ADR 005: Testing Strategy - Jest + Docker Compose
 
-### 3. Firebase Firestore 結合テストの実装 (#6)
-- Firestore エミュレータを使用した結合テスト環境
-- 目標管理・夢データの CRUD 操作テスト
-- CI 環境での Firestore エミュレータ起動フロー
+### Status
+Accepted
 
-### 4. Docker Compose を用いた結合テスト環境 (#7)
-- サーバー・クライアント・Firestore エミュレータを含む docker-compose.yml
-- `docker compose up` で起動する統合テスト環境
-- API エンドポイントに対する E2E テスト
-- CI ワークフローでの Docker Compose テスト実行
+### Context
+クライアント・サーバー両方のテストが必要。CI環境での結合テストも重要。
+
+### Decision
+- **Jest**: クライアント・サーバーのユニットテスト
+- **@testing-library/react**: Reactコンポーネントテスト
+- **Firestore エミュレータ**: バックエンド結合テスト（#6）
+- **Docker Compose**: 統合テスト環境（#7）
+- **GitHub Actions**: CI/CDパイプライン
+
+### Test Pyramid
+```
+E2E Tests (Docker Compose)
+  ↓
+Integration Tests (Firestore Emulator)
+  ↓
+Unit Tests (Jest)
+```
+
+### Consequences
+- ✅ 多層的なテストカバレッジ
+- ✅ CIでの自動テスト実行
+- ✅ ローカルでのデバッグが容易（#8: SQLite backup）
+- ⚠️ テスト環境のメンテナンスコスト
+
+---
+
+## ADR 006: Payment Integration - Stripe
+
+### Status
+Proposed (see #4)
+
+### Context
+サブスクリプション・従量課金の収益化モデルが必要。
+
+### Decision
+- **Stripe Checkout**: 決済フロー
+- **Stripe Webhooks**: 支払い完了イベントの受信
+- **Hono Webhook Handler**: `payment_intent.succeeded` の処理
+- **subscription_status**: ユーザーの課金状態管理
+
+### Consequences
+- ✅ 信頼性の高い決済基盤
+- ✅ サブスクリプション管理が容易
+- ⚠️ Webhookのセキュリティ検証が必要
+- ⚠️ 決済関連のエラーハンドリングが重要
+
+---
+
+## ADR 007: Debug & Backup Strategy
+
+### Status
+Proposed (see #8)
+
+### Context
+本番データのデバッグを安全に行う仕組みが必要。
+
+### Decision
+- **jsonl export**: 行指向JSONでのエクスポート
+- **csv export**: 表計算ソフトでの閲覧用
+- **SQLite backup**: ローカルデバッグ用データベース
+- **Hono Export API**: 管理者用エクスポートエンドポイント
+
+### Consequences
+- ✅ 安全なデバッグ環境
+- ✅ データのポータビリティ
+- ✅ ローカルでの迅速な問題解決
+- ⚠️ 機密データの取り扱いに注意
+
+---
+
+## ADR 008: CI/CD & Workflows
+
+### Status
+Accepted
+
+### Context
+自動テスト・コードレビュー・イシュー管理の自動化が必要。
+
+### Decision
+- **GitHub Actions**: CI/CDパイプライン
+- **Jest Tests workflow**: 自動テスト実行
+- **Devin Review**: AIコードレビュー
+- **Issue-to-Branch**: イシュー作成時の自動ブランチ作成
+- **Bun setup**: 高速なパッケージインストール
+
+### Workflows
+```
+push to main
+  → Jest Tests
+  → Devin Review
+  → (if labeled) Issue-to-Branch
+```
+
+### Consequences
+- ✅ 自動化による品質保証
+- ✅ 開発フローの標準化
+- ✅ AIを活用したコードレビュー
+- ⚠️ ワークフロー設定の保守
+
+---
+
+## Stack Inventory (棚卸し)
+
+| Category | Technology | Status | Purpose |
+|----------|-----------|--------|---------|
+| Frontend | Vite | ✅ Active | Build tool |
+| Frontend | React 19 | ✅ Active | UI library |
+| Frontend | TypeScript | ✅ Active | Type safety |
+| Frontend | Tailwind CSS 4 | ✅ Active | Styling |
+| Frontend | Radix UI | ✅ Active | Components |
+| Frontend | Jest | ✅ Active | Testing |
+| Backend | Hono | ✅ Active | API framework |
+| Backend | Bun | ✅ Active | Runtime |
+| Backend | Zod | 📋 Planned | Validation (#5) |
+| Backend | Stripe SDK | 📋 Planned | Payments (#4) |
+| Database | Firebase Firestore | ✅ Active | Main DB |
+| Database | Firebase Auth | ✅ Active | Authentication |
+| Database | SQLite | 📋 Planned | Debug backup (#8) |
+| Monorepo | Bun Workspaces | ✅ Active | Package mgmt |
+| Monorepo | Turbo | ✅ Active | Task runner |
+| Testing | Jest | ✅ Active | Unit tests |
+| Testing | Firestore Emulator | 📋 Planned | Integration (#6) |
+| Testing | Docker Compose | 📋 Planned | E2E tests (#7) |
+| CI/CD | GitHub Actions | ✅ Active | Automation |
+| CI/CD | Devin Review | ✅ Active | AI review |
+| Debug | jsonl/csv export | 📋 Planned | Backup (#8) |
+
+**Legend**: ✅ Active | 📋 Planned | 🚧 In Progress
 
 ## 📎 まとめ：迷ったらシンプルに始めよう
 
