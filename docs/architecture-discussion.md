@@ -52,6 +52,33 @@ service cloud.firestore {
 
 これらの状況は想定する範囲では起こりにくいと予測されるため、少なくともプロジェクトの初期〜中期フェーズにおいては「Vite + Firebase」で問題なく進められると言えます。
 
+## 🚀 今後の実装ロードマップ（イシュー駆動）
+
+作成済みのイシューに基づき、以下の機能を順次実装していきます。
+
+### 1. Stripe 決済システムの統合 (#4)
+- Stripe Checkout を使用したサブスクリプション・従量課金フロー
+- Webhook (`payment_intent.succeeded`) ハンドリング
+- Hono (Bun) での Webhook エンドポイント実装
+- ユーザーの `subscription_status` 管理
+
+### 2. API バリデーションとテストコードの拡充 (#5)
+- Zod を使用したリクエストスキーマのバリデーション
+- Hono の API エンドポイントに対するユニットテスト
+- 目標階層（Goal > Objective > Key Result）の整合性チェック
+- バックエンド側のテスト環境整備（Jest Tests workflow）
+
+### 3. Firebase Firestore 結合テストの実装 (#6)
+- Firestore エミュレータを使用した結合テスト環境
+- 目標管理・夢データの CRUD 操作テスト
+- CI 環境での Firestore エミュレータ起動フロー
+
+### 4. Docker Compose を用いた結合テスト環境 (#7)
+- サーバー・クライアント・Firestore エミュレータを含む docker-compose.yml
+- `docker compose up` で起動する統合テスト環境
+- API エンドポイントに対する E2E テスト
+- CI ワークフローでの Docker Compose テスト実行
+
 ## 📎 まとめ：迷ったらシンプルに始めよう
 
 これまでの議論を経て、「Vite + Firebase」は、小規模プロジェクトにとって非常に強力な選択肢です。
