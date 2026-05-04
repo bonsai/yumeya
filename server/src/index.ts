@@ -120,7 +120,7 @@ class TaskStore {
     const base = taskText.slice(0, 100);
     return Array.from({ length: 9 }, (_, i) => ({
       id: i + 1,
-      content: i < sentences.length ? sentences[i] : `ステップ${i + 1}: ${base}の詳細処理`,
+      content: i < sentences.length ? sentences[i]! : `ステップ${i + 1}: ${base}の詳細処理`,
       status: 'pending' as const,
     }));
   }
