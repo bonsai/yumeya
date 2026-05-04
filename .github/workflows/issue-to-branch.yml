@@ -1,0 +1,26 @@
+# .github/workflows/issue-to-branch.yml
+name: Issue to Branch
+
+on:
+  issues:
+    types: [opened, labeled]
+
+jobs:
+  create-branch:
+    runs-on: ubuntu-latest
+    if: contains(github.event.issue.labels.*.name, 'feature')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create branch from issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ISSUE_NUMBER=${{ github.event.issue.number }}
+          TITLE="${{ github.event.issue.title }}"
+          # タイトルをslug化
+          SLUG=$(echo "$TITLE" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-\|-$//g')
+          BRANCH="feature/${ISSUE_NUMBER}-${SLUG}"
+          gh issue develop $ISSUE_NUMBER --name "$BRANCH" --base main
+          echo "Created branch: $BRANCH"
